@@ -1,5 +1,6 @@
 """Main menu bar application."""
 
+import threading
 import webbrowser
 from datetime import datetime, timezone
 from itertools import groupby
@@ -22,7 +23,7 @@ class ReviewinatorApp(rumps.App):
         Args:
             config: Application configuration.
         """
-        super().__init__("Reviewinator", quit_button=None)
+        super().__init__("Reviewinator", title="⏳", quit_button=None)
         self.config = config
         self.cache = load_cache(get_cache_path())
         self.prs: list[PullRequest] = []
@@ -79,7 +80,12 @@ class ReviewinatorApp(rumps.App):
         return callback
 
     def _poll(self, _=None) -> None:
-        """Fetch PRs and update state."""
+        """Fetch PRs in background thread to avoid blocking UI."""
+        thread = threading.Thread(target=self._fetch_and_update, daemon=True)
+        thread.start()
+
+    def _fetch_and_update(self) -> None:
+        """Fetch PRs and update state (runs in background thread)."""
         try:
             self.prs = self.client.fetch_review_requests()
 
@@ -104,6 +110,7 @@ class ReviewinatorApp(rumps.App):
                 message=str(e),
             )
 
+        # Update menu on main thread
         self._update_menu()
 
     @rumps.clicked("Check Now")
@@ -116,12 +123,19 @@ class ReviewinatorApp(rumps.App):
         """Handle Quit menu item."""
         rumps.quit_application()
 
+    def _initial_poll(self, _) -> None:
+        """Do the initial poll after app starts, then start regular timer."""
+        self._startup_timer.stop()
+        self._poll()
+        self.timer.start()
+
     def run(self) -> None:
         """Start the application."""
-        # Do initial poll
-        self._poll()
-        # Start timer
-        self.timer.start()
+        # Build initial menu (shows ⏳ title)
+        self._update_menu()
+        # Schedule initial poll after app starts (avoids blocking menu bar icon)
+        self._startup_timer = rumps.Timer(self._initial_poll, 0.5)
+        self._startup_timer.start()
         # Run the app
         super().run()
 
