@@ -28,6 +28,7 @@ class ReviewinatorApp(rumps.App):
         self.cache = load_cache(get_cache_path())
         self.prs: list[PullRequest] = []
         self.is_first_run = True
+        self._ui_update_pending = False
 
         # Set up GitHub client
         github = Github(config.github_token)
@@ -36,8 +37,22 @@ class ReviewinatorApp(rumps.App):
         # Set up timer for polling
         self.timer = rumps.Timer(self._poll, config.refresh_interval)
 
-    def _update_menu(self) -> None:
-        """Rebuild the menu with current PRs."""
+        # Set up timer for UI updates on main thread (checks every 0.1s)
+        self._ui_update_timer = rumps.Timer(self._ui_update_callback, 0.1)
+        self._ui_update_timer.start()
+
+    def _ui_update_callback(self, _) -> None:
+        """Called periodically on main thread to check for pending UI updates."""
+        if self._ui_update_pending:
+            self._ui_update_pending = False
+            self._do_update_menu()
+
+    def _schedule_ui_update(self) -> None:
+        """Schedule a UI update on the main thread."""
+        self._ui_update_pending = True
+
+    def _do_update_menu(self) -> None:
+        """Rebuild the menu with current PRs (must run on main thread)."""
         self.menu.clear()
 
         if not self.prs:
@@ -70,6 +85,12 @@ class ReviewinatorApp(rumps.App):
             self.title = "✓"  # Green check for no reviews
         else:
             self.title = f"🔴 {count}"  # Red indicator with count
+
+    def _update_menu(self) -> None:
+        """Rebuild the menu with current PRs."""
+        # For backward compatibility, call _do_update_menu directly
+        # This is used during initial menu build in run()
+        self._do_update_menu()
 
     def _make_pr_callback(self, url: str):
         """Create a callback that opens a URL."""
@@ -110,12 +131,13 @@ class ReviewinatorApp(rumps.App):
                 message=str(e),
             )
 
-        # Update menu on main thread
-        self._update_menu()
+        # Schedule UI update on main thread
+        self._schedule_ui_update()
 
     @rumps.clicked("Check Now")
     def _on_check_now(self, _) -> None:
         """Handle Check Now menu item."""
+        self.title = "⏳"
         self._poll()
 
     @rumps.clicked("Quit")
@@ -126,6 +148,7 @@ class ReviewinatorApp(rumps.App):
     def _initial_poll(self, _) -> None:
         """Do the initial poll after app starts, then start regular timer."""
         self._startup_timer.stop()
+        self.title = "⏳"
         self._poll()
         self.timer.start()
 
