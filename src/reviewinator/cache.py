@@ -11,6 +11,7 @@ class Cache:
     """Stores state about PRs we've already seen."""
 
     seen_prs: set[int] = field(default_factory=set)
+    pr_statuses: dict[int, str] = field(default_factory=dict)
     last_checked: datetime | None = None
 
 
@@ -41,6 +42,7 @@ def load_cache(cache_path: Path) -> Cache:
 
         return Cache(
             seen_prs=set(data.get("seen_prs", [])),
+            pr_statuses=data.get("pr_statuses", {}),
             last_checked=last_checked,
         )
     except (json.JSONDecodeError, KeyError, ValueError):
@@ -58,6 +60,7 @@ def save_cache(cache: Cache, cache_path: Path) -> None:
 
     data = {
         "seen_prs": list(cache.seen_prs),
+        "pr_statuses": cache.pr_statuses,
         "last_checked": cache.last_checked.isoformat() if cache.last_checked else None,
     }
 

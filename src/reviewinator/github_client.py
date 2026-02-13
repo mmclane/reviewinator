@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 
 from github import Github
 
+from reviewinator.config import Config
+
 
 @dataclass
 class PullRequest:
@@ -17,6 +19,8 @@ class PullRequest:
     repo: str
     url: str
     created_at: datetime
+    type: str  # "review_request" or "created"
+    review_status: str | None  # "waiting", "approved", "changes_requested", "commented", or None
 
     def format_menu_item(self, now: datetime | None = None) -> str:
         """Format PR for menu display.
@@ -25,12 +29,18 @@ class PullRequest:
             now: Current time for age calculation. Defaults to UTC now.
 
         Returns:
-            Formatted string like "#142 Fix login bug (alice, 2h ago)"
+            Formatted string like "#142 Fix login bug (alice, 2h ago)" for review requests
+            or "#142 Fix login bug (waiting, 2h ago)" for created PRs.
         """
         if now is None:
             now = datetime.now(timezone.utc)
         age = format_age(self.created_at, now)
-        return f"#{self.number} {self.title} ({self.author}, {age})"
+
+        if self.type == "created":
+            status = self.review_status or "unknown"
+            return f"#{self.number} {self.title} ({status}, {age})"
+        else:
+            return f"#{self.number} {self.title} ({self.author}, {age})"
 
 
 def format_age(created_at: datetime, now: datetime) -> str:
@@ -64,15 +74,15 @@ def format_age(created_at: datetime, now: datetime) -> str:
 class GitHubClient:
     """Client for fetching PR review requests from GitHub."""
 
-    def __init__(self, github: Github, repos: list[str]) -> None:
+    def __init__(self, github: Github, config: Config) -> None:
         """Initialize the client.
 
         Args:
             github: Authenticated PyGithub instance.
-            repos: List of repos to filter to (e.g., ["org/repo1", "owner/repo2"]).
+            config: Application configuration.
         """
         self._github = github
-        self._repos = set(repos)
+        self._config = config
         self._username: str | None = None
 
     @property
@@ -82,19 +92,65 @@ class GitHubClient:
             self._username = self._github.get_user().login
         return self._username
 
-    def fetch_review_requests(self) -> list[PullRequest]:
-        """Fetch PRs where the current user is requested as reviewer.
+    def _get_review_status(self, pr) -> str:
+        """Get the review status of a PR.
+
+        Args:
+            pr: PyGithub PullRequest object.
 
         Returns:
-            List of PullRequest objects, filtered to configured repos.
+            Status string: "waiting", "approved", "changes_requested", or "commented".
         """
-        query = f"is:pr is:open review-requested:{self.username}"
+        reviews = list(pr.get_reviews())
+        if not reviews:
+            return "waiting"
+
+        # Get the latest review state
+        latest_review = reviews[-1]
+        state = latest_review.state
+
+        if state == "APPROVED":
+            return "approved"
+        elif state == "CHANGES_REQUESTED":
+            return "changes_requested"
+        elif state == "COMMENTED":
+            return "commented"
+        else:
+            return "waiting"
+
+    def _fetch_created_prs(self, repos: list[str], filter_type: str) -> list[PullRequest]:
+        """Fetch PRs created by the current user.
+
+        Args:
+            repos: List of repos to filter to.
+            filter_type: Filter type - "all", "waiting", or "needs_attention".
+
+        Returns:
+            List of PullRequest objects with type="created".
+        """
+        if not repos:
+            return []
+
+        query = f"is:pr is:open author:{self.username}"
         issues = self._github.search_issues(query)
 
+        repos_set = set(repos)
         prs = []
+
         for issue in issues:
             repo_name = issue.repository.full_name
-            if repo_name not in self._repos:
+            if repo_name not in repos_set:
+                continue
+
+            # Get the actual PR object to check reviews
+            repo = self._github.get_repo(repo_name)
+            pr_obj = repo.get_pull(issue.number)
+            review_status = self._get_review_status(pr_obj)
+
+            # Apply filter
+            if filter_type == "waiting" and review_status != "waiting":
+                continue
+            elif filter_type == "needs_attention" and review_status != "changes_requested":
                 continue
 
             pr = PullRequest(
@@ -105,7 +161,54 @@ class GitHubClient:
                 repo=repo_name,
                 url=issue.html_url,
                 created_at=issue.created_at.replace(tzinfo=timezone.utc),
+                type="created",
+                review_status=review_status,
             )
             prs.append(pr)
 
         return prs
+
+    def _fetch_review_requests(self) -> list[PullRequest]:
+        """Fetch PRs where the current user is requested as reviewer.
+
+        Returns:
+            List of PullRequest objects with type="review_request".
+        """
+        query = f"is:pr is:open review-requested:{self.username}"
+        issues = self._github.search_issues(query)
+
+        repos_set = set(self._config.review_request_repos)
+        prs = []
+
+        for issue in issues:
+            repo_name = issue.repository.full_name
+            if repo_name not in repos_set:
+                continue
+
+            pr = PullRequest(
+                id=issue.id,
+                number=issue.number,
+                title=issue.title,
+                author=issue.user.login,
+                repo=repo_name,
+                url=issue.html_url,
+                created_at=issue.created_at.replace(tzinfo=timezone.utc),
+                type="review_request",
+                review_status=None,
+            )
+            prs.append(pr)
+
+        return prs
+
+    def fetch_prs(self) -> list[PullRequest]:
+        """Fetch all PRs (review requests and created PRs).
+
+        Returns:
+            Combined list of review request and created PRs.
+        """
+        review_requests = self._fetch_review_requests()
+        created_prs = self._fetch_created_prs(
+            self._config.created_pr_repos,
+            self._config.created_pr_filter,
+        )
+        return review_requests + created_prs
