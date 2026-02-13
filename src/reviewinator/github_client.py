@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from github import Github
+
 
 @dataclass
 class PullRequest:
@@ -57,3 +59,53 @@ def format_age(created_at: datetime, now: datetime) -> str:
 
     total_weeks = total_days // 7
     return f"{total_weeks}w ago"
+
+
+class GitHubClient:
+    """Client for fetching PR review requests from GitHub."""
+
+    def __init__(self, github: Github, repos: list[str]) -> None:
+        """Initialize the client.
+
+        Args:
+            github: Authenticated PyGithub instance.
+            repos: List of repos to filter to (e.g., ["org/repo1", "owner/repo2"]).
+        """
+        self._github = github
+        self._repos = set(repos)
+        self._username: str | None = None
+
+    @property
+    def username(self) -> str:
+        """Get the authenticated user's username (cached)."""
+        if self._username is None:
+            self._username = self._github.get_user().login
+        return self._username
+
+    def fetch_review_requests(self) -> list[PullRequest]:
+        """Fetch PRs where the current user is requested as reviewer.
+
+        Returns:
+            List of PullRequest objects, filtered to configured repos.
+        """
+        query = f"is:pr is:open review-requested:{self.username}"
+        issues = self._github.search_issues(query)
+
+        prs = []
+        for issue in issues:
+            repo_name = issue.repository.full_name
+            if repo_name not in self._repos:
+                continue
+
+            pr = PullRequest(
+                id=issue.id,
+                number=issue.number,
+                title=issue.title,
+                author=issue.user.login,
+                repo=repo_name,
+                url=issue.html_url,
+                created_at=issue.created_at.replace(tzinfo=timezone.utc),
+            )
+            prs.append(pr)
+
+        return prs

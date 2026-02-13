@@ -1,8 +1,9 @@
 """Tests for GitHub client module."""
 
 from datetime import datetime, timezone
+from unittest.mock import MagicMock
 
-from reviewinator.github_client import PullRequest, format_age
+from reviewinator.github_client import GitHubClient, PullRequest, format_age
 
 
 class TestPullRequest:
@@ -86,3 +87,59 @@ class TestPullRequestFormatting:
         formatted = pr.format_menu_item(now)
 
         assert formatted == "#142 Fix login bug (alice, 2h ago)"
+
+
+class TestGitHubClient:
+    """Tests for GitHubClient class."""
+
+    def test_fetch_review_requests_filters_to_configured_repos(self) -> None:
+        """Should only return PRs from configured repos."""
+        mock_github = MagicMock()
+        mock_user = MagicMock()
+        mock_user.login = "testuser"
+        mock_github.get_user.return_value = mock_user
+
+        # Create mock issues (GitHub search returns issues for PRs)
+        mock_issue1 = MagicMock()
+        mock_issue1.id = 1
+        mock_issue1.number = 10
+        mock_issue1.title = "PR in configured repo"
+        mock_issue1.user.login = "alice"
+        mock_issue1.repository.full_name = "org/repo1"
+        mock_issue1.html_url = "https://github.com/org/repo1/pull/10"
+        mock_issue1.created_at = datetime(2026, 2, 13, 10, 0, 0, tzinfo=timezone.utc)
+
+        mock_issue2 = MagicMock()
+        mock_issue2.id = 2
+        mock_issue2.number = 20
+        mock_issue2.title = "PR in non-configured repo"
+        mock_issue2.user.login = "bob"
+        mock_issue2.repository.full_name = "other/repo"
+        mock_issue2.html_url = "https://github.com/other/repo/pull/20"
+        mock_issue2.created_at = datetime(2026, 2, 13, 10, 0, 0, tzinfo=timezone.utc)
+
+        mock_github.search_issues.return_value = [mock_issue1, mock_issue2]
+
+        client = GitHubClient(mock_github, repos=["org/repo1", "org/repo2"])
+        prs = client.fetch_review_requests()
+
+        assert len(prs) == 1
+        assert prs[0].repo == "org/repo1"
+        assert prs[0].number == 10
+
+    def test_fetch_review_requests_searches_for_user(self) -> None:
+        """Should search for PRs requesting review from current user."""
+        mock_github = MagicMock()
+        mock_user = MagicMock()
+        mock_user.login = "testuser"
+        mock_github.get_user.return_value = mock_user
+        mock_github.search_issues.return_value = []
+
+        client = GitHubClient(mock_github, repos=["org/repo1"])
+        client.fetch_review_requests()
+
+        mock_github.search_issues.assert_called_once()
+        call_args = mock_github.search_issues.call_args[0][0]
+        assert "review-requested:testuser" in call_args
+        assert "is:pr" in call_args
+        assert "is:open" in call_args
