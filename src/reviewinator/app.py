@@ -32,7 +32,7 @@ class ReviewinatorApp(rumps.App):
 
         # Set up GitHub client
         github = Github(config.github_token)
-        self.client = GitHubClient(github, config.repos)
+        self.client = GitHubClient(github, config.review_request_repos)
 
         # Set up timer for polling
         self.timer = rumps.Timer(self._poll, config.refresh_interval)

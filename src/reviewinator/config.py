@@ -15,7 +15,9 @@ class Config:
     """Application configuration."""
 
     github_token: str
-    repos: list[str]
+    review_request_repos: list[str]
+    created_pr_repos: list[str]
+    created_pr_filter: str
     refresh_interval: int = 300
 
 
@@ -44,20 +46,49 @@ def load_config(config_path: Path) -> Config:
     if not config_path.exists():
         raise ConfigError(f"Config file not found: {config_path}")
 
-    with open(config_path) as f:
-        data = yaml.safe_load(f)
+    try:
+        with config_path.open() as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ConfigError(f"Invalid YAML: {e}")
 
-    if not data:
-        data = {}
+    if not isinstance(data, dict):
+        raise ConfigError("Config must be a YAML mapping")
 
+    # Required fields
     if "github_token" not in data:
         raise ConfigError("Missing required field: github_token")
 
-    if "repos" not in data or not data["repos"]:
-        raise ConfigError("Missing or empty required field: repos")
+    # Handle backward compatibility: repos -> review_request_repos
+    if "review_request_repos" in data:
+        review_request_repos = data["review_request_repos"]
+    elif "repos" in data:
+        review_request_repos = data["repos"]
+    else:
+        raise ConfigError("Missing required field: review_request_repos (or repos)")
+
+    if not isinstance(review_request_repos, list) or not review_request_repos:
+        raise ConfigError("review_request_repos must be a non-empty list")
+
+    # Optional fields with defaults
+    created_pr_repos = data.get("created_pr_repos", [])
+    if not isinstance(created_pr_repos, list):
+        raise ConfigError("created_pr_repos must be a list")
+
+    created_pr_filter = data.get("created_pr_filter", "waiting")
+    valid_filters = ["all", "waiting", "needs_attention"]
+    if created_pr_filter not in valid_filters:
+        raise ConfigError(
+            f"created_pr_filter must be one of: {', '.join(valid_filters)} "
+            f"(got: {created_pr_filter})"
+        )
+
+    refresh_interval = data.get("refresh_interval", 300)
 
     return Config(
         github_token=data["github_token"],
-        repos=data["repos"],
-        refresh_interval=data.get("refresh_interval", 300),
+        review_request_repos=review_request_repos,
+        created_pr_repos=created_pr_repos,
+        created_pr_filter=created_pr_filter,
+        refresh_interval=refresh_interval,
     )
