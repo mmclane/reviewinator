@@ -1,0 +1,27 @@
+# Reviewinator Configuration Example
+
+# GitHub personal access token
+# Create at: https://github.com/settings/tokens
+# Requires: repo scope
+github_token: ghp_your_token_here
+
+# Repos to monitor for review requests (where you're asked to review)
+review_request_repos:
+  - owner/repo1
+  - org/repo2
+
+# Repos to monitor for PRs you created (optional)
+# If not specified or empty, created PR tracking is disabled
+created_pr_repos:
+  - owner/repo1
+  - org/repo3
+
+# Filter for which created PRs to show (optional, defaults to "waiting")
+# Options:
+#   - "all": Show all open PRs you created
+#   - "waiting": Only show PRs still waiting for review
+#   - "needs_attention": Only show PRs with changes requested
+created_pr_filter: waiting
+
+# How often to check for updates, in seconds (optional, defaults to 300)
+refresh_interval: 300

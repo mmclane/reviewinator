@@ -44,7 +44,7 @@ class TestReviewinatorApp:
         mock_load_cache.return_value = Cache()
 
         app = ReviewinatorApp(sample_config)
-        app.client.fetch_review_requests = MagicMock(return_value=[sample_pr])
+        app.client.fetch_prs = MagicMock(return_value=[sample_pr])
 
         app._poll()
 
@@ -72,14 +72,14 @@ class TestReviewinatorApp:
         mock_load_cache.return_value = Cache()
 
         app = ReviewinatorApp(sample_config)
-        app.client.fetch_review_requests = MagicMock(return_value=[])
+        app.client.fetch_prs = MagicMock(return_value=[])
 
         # First run - no notifications
         app._poll()
         mock_notify.assert_not_called()
 
         # Second run with new PR - should notify
-        app.client.fetch_review_requests = MagicMock(return_value=[sample_pr])
+        app.client.fetch_prs = MagicMock(return_value=[sample_pr])
         app._poll()
         mock_notify.assert_called_once_with(sample_pr)
 
@@ -103,7 +103,7 @@ class TestReviewinatorApp:
         mock_load_cache.return_value = Cache()
 
         app = ReviewinatorApp(sample_config)
-        app.client.fetch_review_requests = MagicMock(return_value=[sample_pr])
+        app.client.fetch_prs = MagicMock(return_value=[sample_pr])
 
         app._poll()
 

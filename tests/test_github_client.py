@@ -173,8 +173,16 @@ class TestGitHubClient:
 
         mock_github.search_issues.return_value = [mock_issue1, mock_issue2]
 
-        client = GitHubClient(mock_github, repos=["org/repo1", "org/repo2"])
-        prs = client.fetch_review_requests()
+        from reviewinator.config import Config
+
+        config = Config(
+            github_token="test",
+            review_request_repos=["org/repo1", "org/repo2"],
+            created_pr_repos=[],
+            created_pr_filter="waiting",
+        )
+        client = GitHubClient(mock_github, config)
+        prs = client._fetch_review_requests()
 
         assert len(prs) == 1
         assert prs[0].repo == "org/repo1"
@@ -188,8 +196,16 @@ class TestGitHubClient:
         mock_github.get_user.return_value = mock_user
         mock_github.search_issues.return_value = []
 
-        client = GitHubClient(mock_github, repos=["org/repo1"])
-        client.fetch_review_requests()
+        from reviewinator.config import Config
+
+        config = Config(
+            github_token="test",
+            review_request_repos=["org/repo1"],
+            created_pr_repos=[],
+            created_pr_filter="waiting",
+        )
+        client = GitHubClient(mock_github, config)
+        client._fetch_review_requests()
 
         mock_github.search_issues.assert_called_once()
         call_args = mock_github.search_issues.call_args[0][0]

@@ -11,7 +11,12 @@ from github import Github
 from reviewinator.cache import get_cache_path, load_cache, save_cache
 from reviewinator.config import Config, ConfigError, get_config_path, load_config
 from reviewinator.github_client import GitHubClient, PullRequest
-from reviewinator.notifications import find_new_prs, notify_new_pr
+from reviewinator.notifications import (
+    find_new_prs,
+    find_status_changes,
+    notify_new_pr,
+    notify_status_change,
+)
 
 
 class ReviewinatorApp(rumps.App):
@@ -32,7 +37,7 @@ class ReviewinatorApp(rumps.App):
 
         # Set up GitHub client
         github = Github(config.github_token)
-        self.client = GitHubClient(github, config.review_request_repos)
+        self.client = GitHubClient(github, config)
 
         # Set up timer for polling
         self.timer = rumps.Timer(self._poll, config.refresh_interval)
@@ -55,36 +60,79 @@ class ReviewinatorApp(rumps.App):
         """Rebuild the menu with current PRs (must run on main thread)."""
         self.menu.clear()
 
-        if not self.prs:
-            self.menu.add(rumps.MenuItem("No pending reviews", callback=None))
-        else:
-            # Group PRs by repo
-            sorted_prs = sorted(self.prs, key=lambda p: p.repo)
-            for repo, repo_prs in groupby(sorted_prs, key=lambda p: p.repo):
-                # Bold repo header (using MenuItem with callback=None makes it non-clickable)
-                header = rumps.MenuItem(f"{repo}:", callback=None)
-                self.menu.add(header)
+        # Split PRs by type
+        review_requests = [pr for pr in self.prs if pr.type == "review_request"]
+        created_prs = [pr for pr in self.prs if pr.type == "created"]
 
-                # PR items under the repo
+        # Show "Reviews for You" section if we have review requests
+        if review_requests:
+            header = rumps.MenuItem("Reviews for You:", callback=None)
+            self.menu.add(header)
+
+            sorted_prs = sorted(review_requests, key=lambda p: p.repo)
+            for repo, repo_prs in groupby(sorted_prs, key=lambda p: p.repo):
+                repo_header = rumps.MenuItem(f"  {repo}:", callback=None)
+                self.menu.add(repo_header)
+
                 now = datetime.now(timezone.utc)
                 for pr in repo_prs:
                     item = rumps.MenuItem(
-                        f"  {pr.format_menu_item(now)}",
+                        f"    {pr.format_menu_item(now)}",
                         callback=self._make_pr_callback(pr.url),
                     )
                     self.menu.add(item)
+
+        # Show "Your PRs" section if we have created PRs
+        if created_prs:
+            if review_requests:  # Add separator if both sections exist
+                self.menu.add(rumps.separator)
+
+            header = rumps.MenuItem("Your PRs:", callback=None)
+            self.menu.add(header)
+
+            sorted_prs = sorted(created_prs, key=lambda p: p.repo)
+            for repo, repo_prs in groupby(sorted_prs, key=lambda p: p.repo):
+                repo_header = rumps.MenuItem(f"  {repo}:", callback=None)
+                self.menu.add(repo_header)
+
+                now = datetime.now(timezone.utc)
+                for pr in repo_prs:
+                    item = rumps.MenuItem(
+                        f"    {pr.format_menu_item(now)}",
+                        callback=self._make_pr_callback(pr.url),
+                    )
+                    self.menu.add(item)
+
+        # Show "No pending items" if both lists empty
+        if not review_requests and not created_prs:
+            self.menu.add(rumps.MenuItem("No pending items", callback=None))
 
         self.menu.add(rumps.separator)
         self.menu.add(rumps.MenuItem("Check Now", callback=self._on_check_now))
         self.menu.add(rumps.separator)
         self.menu.add(rumps.MenuItem("Quit", callback=self._on_quit))
 
-        # Update title with count and color indicator
-        count = len(self.prs)
-        if count == 0:
-            self.title = "✅"  # Green check for no reviews
-        else:
-            self.title = f"🔴 {count}"  # Red indicator with count
+        # Update title with dual counts
+        self._update_title(review_requests, created_prs)
+
+    def _update_title(self, review_requests: list, created_prs: list) -> None:
+        """Update menu bar title based on PR counts.
+
+        Args:
+            review_requests: List of review request PRs.
+            created_prs: List of created PRs.
+        """
+        review_count = len(review_requests)
+        created_count = len(created_prs)
+
+        if review_count == 0 and created_count == 0:
+            self.title = "✅"
+        elif review_count > 0 and created_count > 0:
+            self.title = f"🔴 {review_count} | 📤 {created_count}"
+        elif review_count > 0:
+            self.title = f"🔴 {review_count}"
+        else:  # created_count > 0
+            self.title = f"📤 {created_count}"
 
     def _update_menu(self) -> None:
         """Rebuild the menu with current PRs."""
@@ -108,7 +156,7 @@ class ReviewinatorApp(rumps.App):
     def _fetch_and_update(self) -> None:
         """Fetch PRs and update state (runs in background thread)."""
         try:
-            self.prs = self.client.fetch_review_requests()
+            self.prs = self.client.fetch_prs()
 
             # Find new PRs and notify (skip on first run)
             if not self.is_first_run:
@@ -116,8 +164,18 @@ class ReviewinatorApp(rumps.App):
                 for pr in new_prs:
                     notify_new_pr(pr)
 
+                # Find status changes and notify
+                status_changes = find_status_changes(self.prs, self.cache.pr_statuses)
+                for pr, old_status, new_status in status_changes:
+                    notify_status_change(pr, new_status)
+
             # Update cache
             self.cache.seen_prs = {pr.id for pr in self.prs}
+            self.cache.pr_statuses = {
+                pr.id: pr.review_status
+                for pr in self.prs
+                if pr.type == "created" and pr.review_status is not None
+            }
             self.cache.last_checked = datetime.now(timezone.utc)
             save_cache(self.cache, get_cache_path())
 
