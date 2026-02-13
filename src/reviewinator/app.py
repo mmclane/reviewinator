@@ -82,7 +82,7 @@ class ReviewinatorApp(rumps.App):
         # Update title with count and color indicator
         count = len(self.prs)
         if count == 0:
-            self.title = "✓"  # Green check for no reviews
+            self.title = "✅"  # Green check for no reviews
         else:
             self.title = f"🔴 {count}"  # Red indicator with count
 

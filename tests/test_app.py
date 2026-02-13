@@ -108,3 +108,19 @@ class TestReviewinatorApp:
         app._poll()
 
         mock_notify.assert_not_called()
+
+    @patch("reviewinator.app.Github")
+    @patch("reviewinator.app.load_cache")
+    def test_menu_shows_green_check_when_no_prs(
+        self, mock_load_cache: MagicMock, mock_github: MagicMock, sample_config: Config
+    ) -> None:
+        """Test that menu bar shows green check mark when no PRs."""
+        from reviewinator.app import ReviewinatorApp
+        from reviewinator.cache import Cache
+
+        mock_load_cache.return_value = Cache()
+
+        app = ReviewinatorApp(sample_config)
+        app.prs = []
+        app._do_update_menu()
+        assert app.title == "✅"
