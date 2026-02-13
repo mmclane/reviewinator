@@ -19,6 +19,8 @@ class TestPullRequest:
             repo="org/repo1",
             url="https://github.com/org/repo1/pull/142",
             created_at=datetime(2026, 2, 13, 10, 0, 0, tzinfo=timezone.utc),
+            type="review_request",
+            review_status=None,
         )
 
         assert pr.id == 12345
@@ -27,6 +29,38 @@ class TestPullRequest:
         assert pr.author == "alice"
         assert pr.repo == "org/repo1"
         assert pr.url == "https://github.com/org/repo1/pull/142"
+
+    def test_pull_request_with_review_request_type(self) -> None:
+        """Test PR with type='review_request'."""
+        pr = PullRequest(
+            id=1,
+            number=123,
+            title="Test PR",
+            author="alice",
+            repo="owner/repo",
+            url="https://github.com/owner/repo/pull/123",
+            created_at=datetime.now(timezone.utc),
+            type="review_request",
+            review_status=None,
+        )
+        assert pr.type == "review_request"
+        assert pr.review_status is None
+
+    def test_pull_request_with_created_type(self) -> None:
+        """Test PR with type='created' and review status."""
+        pr = PullRequest(
+            id=2,
+            number=456,
+            title="My PR",
+            author="me",
+            repo="owner/repo",
+            url="https://github.com/owner/repo/pull/456",
+            created_at=datetime.now(timezone.utc),
+            type="created",
+            review_status="waiting",
+        )
+        assert pr.type == "created"
+        assert pr.review_status == "waiting"
 
 
 class TestFormatAge:
@@ -82,11 +116,30 @@ class TestPullRequestFormatting:
             repo="org/repo1",
             url="https://github.com/org/repo1/pull/142",
             created_at=datetime(2026, 2, 13, 10, 0, 0, tzinfo=timezone.utc),
+            type="review_request",
+            review_status=None,
         )
 
         formatted = pr.format_menu_item(now)
 
         assert formatted == "#142 Fix login bug (alice, 2h ago)"
+
+    def test_format_menu_item_for_created_pr(self) -> None:
+        """Test formatting created PR shows status instead of author."""
+        pr = PullRequest(
+            id=1,
+            number=123,
+            title="Test",
+            author="me",
+            repo="owner/repo",
+            url="https://url",
+            created_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+            type="created",
+            review_status="waiting",
+        )
+        now = datetime(2024, 1, 1, 14, 0, tzinfo=timezone.utc)
+        result = pr.format_menu_item(now)
+        assert result == "#123 Test (waiting, 2h ago)"
 
 
 class TestGitHubClient:

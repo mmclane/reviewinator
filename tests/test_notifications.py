@@ -20,6 +20,8 @@ class TestFindNewPrs:
             repo="org/repo1",
             url="https://github.com/org/repo1/pull/10",
             created_at=datetime.now(timezone.utc),
+            type="review_request",
+            review_status=None,
         )
         pr2 = PullRequest(
             id=2,
@@ -29,6 +31,8 @@ class TestFindNewPrs:
             repo="org/repo1",
             url="https://github.com/org/repo1/pull/20",
             created_at=datetime.now(timezone.utc),
+            type="review_request",
+            review_status=None,
         )
 
         current_prs = [pr1, pr2]
@@ -49,6 +53,8 @@ class TestFindNewPrs:
             repo="org/repo1",
             url="https://github.com/org/repo1/pull/10",
             created_at=datetime.now(timezone.utc),
+            type="review_request",
+            review_status=None,
         )
 
         new_prs = find_new_prs([pr1], {1})
@@ -70,6 +76,8 @@ class TestNotifyNewPr:
             repo="org/repo1",
             url="https://github.com/org/repo1/pull/142",
             created_at=datetime.now(timezone.utc),
+            type="review_request",
+            review_status=None,
         )
 
         notify_new_pr(pr)
@@ -93,6 +101,8 @@ class TestNotifyNewPr:
             repo="org/repo1",
             url="https://github.com/org/repo1/pull/142",
             created_at=datetime.now(timezone.utc),
+            type="review_request",
+            review_status=None,
         )
 
         # Should not raise

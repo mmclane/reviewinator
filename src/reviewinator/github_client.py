@@ -17,6 +17,8 @@ class PullRequest:
     repo: str
     url: str
     created_at: datetime
+    type: str  # "review_request" or "created"
+    review_status: str | None  # "waiting", "approved", "changes_requested", "commented", or None
 
     def format_menu_item(self, now: datetime | None = None) -> str:
         """Format PR for menu display.
@@ -25,12 +27,18 @@ class PullRequest:
             now: Current time for age calculation. Defaults to UTC now.
 
         Returns:
-            Formatted string like "#142 Fix login bug (alice, 2h ago)"
+            Formatted string like "#142 Fix login bug (alice, 2h ago)" for review requests
+            or "#142 Fix login bug (waiting, 2h ago)" for created PRs.
         """
         if now is None:
             now = datetime.now(timezone.utc)
         age = format_age(self.created_at, now)
-        return f"#{self.number} {self.title} ({self.author}, {age})"
+
+        if self.type == "created":
+            status = self.review_status or "unknown"
+            return f"#{self.number} {self.title} ({status}, {age})"
+        else:
+            return f"#{self.number} {self.title} ({self.author}, {age})"
 
 
 def format_age(created_at: datetime, now: datetime) -> str:
@@ -105,6 +113,8 @@ class GitHubClient:
                 repo=repo_name,
                 url=issue.html_url,
                 created_at=issue.created_at.replace(tzinfo=timezone.utc),
+                type="review_request",
+                review_status=None,
             )
             prs.append(pr)
 

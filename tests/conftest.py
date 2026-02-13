@@ -18,6 +18,8 @@ def sample_pr() -> PullRequest:
         repo="org/repo1",
         url="https://github.com/org/repo1/pull/142",
         created_at=datetime(2026, 2, 13, 10, 0, 0, tzinfo=timezone.utc),
+        type="review_request",
+        review_status=None,
     )
 
 
