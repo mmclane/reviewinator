@@ -56,6 +56,25 @@ repos:
         with pytest.raises(ConfigError, match="created_pr_filter must be one of"):
             load_config(config_file)
 
+    def test_load_config_created_pr_filter_either(self, tmp_path: Path) -> None:
+        """Test created_pr_filter accepts 'either' option."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+created_pr_filter: either
+"""
+        )
+        config = load_config(config_file)
+        assert config.created_pr_filter == "either"
+
+    def test_load_config_created_pr_filter_defaults_to_either(self, tmp_path: Path) -> None:
+        """Test created_pr_filter defaults to 'either'."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("github_token: test_token\n")
+        config = load_config(config_file)
+        assert config.created_pr_filter == "either"
+
     def test_load_config_with_excluded_repos(self, tmp_path: Path) -> None:
         """Test loading config with excluded_repos field."""
         config_file = tmp_path / "config.yaml"
