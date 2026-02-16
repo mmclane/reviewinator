@@ -103,9 +103,63 @@ class ReviewinatorApp(rumps.App):
                     )
                     self.menu.add(item)
 
-        # Show "No pending items" if both lists empty
+        # Show "No pending items" or recent repos if both lists empty
         if not review_requests and not created_prs:
-            self.menu.add(rumps.MenuItem("No pending items", callback=None))
+            # Calculate repos with recent activity
+            cutoff_date = datetime.now(timezone.utc) - timedelta(
+                days=self.config.activity_lookback_days
+            )
+            active_repos = {
+                repo: timestamp
+                for repo, timestamp in self.cache.repo_activity.items()
+                if timestamp > cutoff_date
+            }
+
+            if active_repos:
+                # Show recent activity header
+                header = rumps.MenuItem("Recent Activity:", callback=None)
+                self.menu.add(header)
+
+                # Sort by most recent first
+                sorted_repos = sorted(active_repos.items(), key=lambda x: x[1], reverse=True)
+
+                # Show up to 20 repos
+                display_limit = 20
+                for repo, timestamp in sorted_repos[:display_limit]:
+                    # Count PRs for this repo from cache
+                    pr_count = sum(1 for pr in self.prs if pr.repo == repo)
+                    if pr_count == 0:
+                        # Estimate from cache if no current PRs
+                        pr_count = "recent"
+
+                    # Calculate age
+                    now = datetime.now(timezone.utc)
+                    age_delta = now - timestamp
+                    if age_delta.days == 0:
+                        age_str = "today"
+                    elif age_delta.days == 1:
+                        age_str = "1d ago"
+                    else:
+                        age_str = f"{age_delta.days}d ago"
+
+                    # Format: "owner/repo (N PRs, Xd ago)"
+                    if isinstance(pr_count, int):
+                        title = f"  {repo} ({pr_count} PRs, {age_str})"
+                    else:
+                        title = f"  {repo} (recent activity)"
+
+                    item = rumps.MenuItem(
+                        title, callback=self._make_pr_callback(f"https://github.com/{repo}/pulls")
+                    )
+                    self.menu.add(item)
+
+                # Show overflow if needed
+                if len(active_repos) > display_limit:
+                    overflow_count = len(active_repos) - display_limit
+                    self.menu.add(rumps.MenuItem(f"  and {overflow_count} more...", callback=None))
+            else:
+                # No activity - show default message
+                self.menu.add(rumps.MenuItem("No pending items", callback=None))
 
         self.menu.add(rumps.separator)
         self.menu.add(rumps.MenuItem("Check Now", callback=self._on_check_now))
