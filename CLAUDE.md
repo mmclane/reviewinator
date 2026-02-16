@@ -43,12 +43,17 @@ excluded_repos:
   - owner/archived-repo
   - org/old-project
 created_pr_filter: either  # Options: all, waiting, needs_attention, either
+activity_lookback_days: 14  # Days to show repos with recent activity (default: 14)
 refresh_interval: 300  # optional, defaults to 300 seconds
 ```
 
 The `excluded_repos` field is optional and lists repos to exclude from tracking.
+
 The `created_pr_filter` field controls which of your created PRs to show:
 - `either` (default): Show PRs waiting for review OR needing changes
 - `waiting`: Show only PRs waiting for initial review
 - `needs_attention`: Show only PRs with changes requested
 - `all`: Show all your open PRs
+
+The `activity_lookback_days` field controls how far back to look for repo activity
+when showing repos in the empty state (default: 14 days).
