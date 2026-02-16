@@ -2,7 +2,7 @@
 
 import threading
 import webbrowser
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from itertools import groupby
 
 import rumps
@@ -157,6 +157,19 @@ class ReviewinatorApp(rumps.App):
         """Fetch PRs and update state (runs in background thread)."""
         try:
             self.prs = self.client.fetch_prs()
+
+            # Update repo activity for all current PRs
+            now = datetime.now(timezone.utc)
+            for pr in self.prs:
+                self.cache.repo_activity[pr.repo] = now
+
+            # Clean up old repo activity entries
+            cutoff = now - timedelta(days=self.config.activity_lookback_days)
+            self.cache.repo_activity = {
+                repo: timestamp
+                for repo, timestamp in self.cache.repo_activity.items()
+                if timestamp > cutoff
+            }
 
             # Find new PRs and notify (skip on first run)
             if not self.is_first_run:

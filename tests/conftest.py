@@ -47,3 +47,13 @@ def sample_config():
         activity_lookback_days=14,
         refresh_interval=300,
     )
+
+
+@pytest.fixture
+def mock_github_client():
+    """Create a mock GitHubClient for testing."""
+    from unittest.mock import MagicMock
+
+    mock = MagicMock()
+    mock.fetch_prs = MagicMock(return_value=[])
+    return mock
