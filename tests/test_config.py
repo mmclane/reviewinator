@@ -108,6 +108,49 @@ excluded_repos: "not-a-list"
         with pytest.raises(ConfigError, match="excluded_repos must be a list"):
             load_config(config_file)
 
+    def test_load_config_activity_lookback_days_defaults_to_14(self, tmp_path: Path) -> None:
+        """Test activity_lookback_days defaults to 14."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("github_token: test_token\n")
+        config = load_config(config_file)
+        assert config.activity_lookback_days == 14
+
+    def test_load_config_activity_lookback_days_custom_value(self, tmp_path: Path) -> None:
+        """Test activity_lookback_days accepts custom positive integer."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+activity_lookback_days: 30
+"""
+        )
+        config = load_config(config_file)
+        assert config.activity_lookback_days == 30
+
+    def test_load_config_activity_lookback_days_rejects_negative(self, tmp_path: Path) -> None:
+        """Test activity_lookback_days rejects negative values."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+activity_lookback_days: -5
+"""
+        )
+        with pytest.raises(ConfigError, match="activity_lookback_days must be a positive integer"):
+            load_config(config_file)
+
+    def test_load_config_activity_lookback_days_rejects_zero(self, tmp_path: Path) -> None:
+        """Test activity_lookback_days rejects zero."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+activity_lookback_days: 0
+"""
+        )
+        with pytest.raises(ConfigError, match="activity_lookback_days must be a positive integer"):
+            load_config(config_file)
+
 
 class TestConfigPaths:
     """Tests for config path utilities."""

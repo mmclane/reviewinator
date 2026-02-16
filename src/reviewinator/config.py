@@ -17,6 +17,7 @@ class Config:
     github_token: str
     excluded_repos: list[str]
     created_pr_filter: str
+    activity_lookback_days: int
     refresh_interval: int = 300
 
 
@@ -71,11 +72,16 @@ def load_config(config_path: Path) -> Config:
             f"(got: {created_pr_filter})"
         )
 
+    activity_lookback_days = data.get("activity_lookback_days", 14)
+    if not isinstance(activity_lookback_days, int) or activity_lookback_days <= 0:
+        raise ConfigError("activity_lookback_days must be a positive integer")
+
     refresh_interval = data.get("refresh_interval", 300)
 
     return Config(
         github_token=data["github_token"],
         excluded_repos=excluded_repos,
         created_pr_filter=created_pr_filter,
+        activity_lookback_days=activity_lookback_days,
         refresh_interval=refresh_interval,
     )

@@ -179,6 +179,7 @@ class TestGitHubClient:
             github_token="test",
             excluded_repos=["other/repo"],
             created_pr_filter="either",
+            activity_lookback_days=14,
         )
         client = GitHubClient(mock_github, config)
         prs = client._fetch_review_requests()
@@ -201,6 +202,7 @@ class TestGitHubClient:
             github_token="test",
             excluded_repos=[],
             created_pr_filter="either",
+            activity_lookback_days=14,
         )
         client = GitHubClient(mock_github, config)
         client._fetch_review_requests()
