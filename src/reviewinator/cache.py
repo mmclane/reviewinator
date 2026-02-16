@@ -13,6 +13,7 @@ class Cache:
     seen_prs: set[int] = field(default_factory=set)
     pr_statuses: dict[int, str] = field(default_factory=dict)
     last_checked: datetime | None = None
+    repo_activity: dict[str, datetime] = field(default_factory=dict)
 
 
 def get_cache_path() -> Path:
@@ -40,10 +41,21 @@ def load_cache(cache_path: Path) -> Cache:
         if data.get("last_checked"):
             last_checked = datetime.fromisoformat(data["last_checked"])
 
+        # Load repo_activity with backward compatibility
+        repo_activity = {}
+        if "repo_activity" in data:
+            for repo, timestamp_str in data["repo_activity"].items():
+                try:
+                    repo_activity[repo] = datetime.fromisoformat(timestamp_str)
+                except (ValueError, TypeError):
+                    # Skip malformed timestamps
+                    pass
+
         return Cache(
             seen_prs=set(data.get("seen_prs", [])),
             pr_statuses=data.get("pr_statuses", {}),
             last_checked=last_checked,
+            repo_activity=repo_activity,
         )
     except (json.JSONDecodeError, KeyError, ValueError):
         return Cache()
@@ -62,6 +74,10 @@ def save_cache(cache: Cache, cache_path: Path) -> None:
         "seen_prs": list(cache.seen_prs),
         "pr_statuses": cache.pr_statuses,
         "last_checked": cache.last_checked.isoformat() if cache.last_checked else None,
+        "repo_activity": {
+            repo: timestamp.isoformat()
+            for repo, timestamp in cache.repo_activity.items()
+        },
     }
 
     with open(cache_path, "w") as f:

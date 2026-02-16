@@ -96,6 +96,91 @@ class TestSaveCache:
         assert loaded.last_checked == original.last_checked
 
 
+class TestCacheWithRepoActivity:
+    """Tests for Cache with repo_activity field."""
+
+    def test_cache_with_repo_activity(self) -> None:
+        """Test Cache with repo_activity field."""
+        now = datetime.now(timezone.utc)
+        cache = Cache(
+            seen_prs={1, 2, 3},
+            pr_statuses={1: "waiting", 2: "approved"},
+            last_checked=now,
+            repo_activity={"owner/repo1": now, "owner/repo2": now},
+        )
+        assert cache.repo_activity == {"owner/repo1": now, "owner/repo2": now}
+
+    def test_load_cache_with_repo_activity(self, tmp_path: Path) -> None:
+        """Test loading cache with repo_activity field."""
+        cache_file = tmp_path / "cache.json"
+        now = datetime.now(timezone.utc)
+        cache_file.write_text(
+            json.dumps({
+                "seen_prs": [1, 2],
+                "pr_statuses": {"1": "waiting"},
+                "last_checked": now.isoformat(),
+                "repo_activity": {
+                    "owner/repo1": now.isoformat(),
+                    "owner/repo2": now.isoformat(),
+                }
+            })
+        )
+        cache = load_cache(cache_file)
+        assert len(cache.repo_activity) == 2
+        assert "owner/repo1" in cache.repo_activity
+        assert "owner/repo2" in cache.repo_activity
+
+    def test_load_cache_without_repo_activity_backward_compat(self, tmp_path: Path) -> None:
+        """Test loading old cache without repo_activity field (backward compatibility)."""
+        cache_file = tmp_path / "cache.json"
+        now = datetime.now(timezone.utc)
+        cache_file.write_text(
+            json.dumps({
+                "seen_prs": [1, 2],
+                "pr_statuses": {"1": "waiting"},
+                "last_checked": now.isoformat(),
+            })
+        )
+        cache = load_cache(cache_file)
+        assert cache.repo_activity == {}
+
+    def test_save_cache_with_repo_activity(self, tmp_path: Path) -> None:
+        """Test saving cache with repo_activity field."""
+        cache_file = tmp_path / "cache.json"
+        now = datetime.now(timezone.utc)
+        cache = Cache(
+            seen_prs={1, 2},
+            pr_statuses={1: "waiting"},
+            last_checked=now,
+            repo_activity={"owner/repo1": now, "owner/repo2": now},
+        )
+        save_cache(cache, cache_file)
+
+        with cache_file.open() as f:
+            data = json.load(f)
+
+        assert "repo_activity" in data
+        assert "owner/repo1" in data["repo_activity"]
+        assert "owner/repo2" in data["repo_activity"]
+
+    def test_cache_repo_activity_roundtrip(self, tmp_path: Path) -> None:
+        """Test repo_activity survives save/load roundtrip."""
+        cache_file = tmp_path / "cache.json"
+        now = datetime.now(timezone.utc)
+        original = Cache(
+            seen_prs={1},
+            pr_statuses={},
+            last_checked=now,
+            repo_activity={"owner/repo": now},
+        )
+        save_cache(original, cache_file)
+        loaded = load_cache(cache_file)
+
+        assert "owner/repo" in loaded.repo_activity
+        # Datetimes should be equal (within a second due to JSON serialization)
+        assert abs((loaded.repo_activity["owner/repo"] - now).total_seconds()) < 1
+
+
 class TestCacheHelpers:
     """Tests for cache helper functions."""
 

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from reviewinator.cache import Cache
 from reviewinator.github_client import PullRequest
 
 
@@ -20,6 +21,17 @@ def sample_pr() -> PullRequest:
         created_at=datetime(2026, 2, 13, 10, 0, 0, tzinfo=timezone.utc),
         type="review_request",
         review_status=None,
+    )
+
+
+@pytest.fixture
+def sample_cache():
+    """Sample cache for testing."""
+    return Cache(
+        seen_prs={1, 2, 3},
+        pr_statuses={1: "waiting", 2: "approved"},
+        last_checked=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        repo_activity={},
     )
 
 
