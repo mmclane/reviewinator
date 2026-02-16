@@ -115,15 +115,17 @@ class TestCacheWithRepoActivity:
         cache_file = tmp_path / "cache.json"
         now = datetime.now(timezone.utc)
         cache_file.write_text(
-            json.dumps({
-                "seen_prs": [1, 2],
-                "pr_statuses": {"1": "waiting"},
-                "last_checked": now.isoformat(),
-                "repo_activity": {
-                    "owner/repo1": now.isoformat(),
-                    "owner/repo2": now.isoformat(),
+            json.dumps(
+                {
+                    "seen_prs": [1, 2],
+                    "pr_statuses": {"1": "waiting"},
+                    "last_checked": now.isoformat(),
+                    "repo_activity": {
+                        "owner/repo1": now.isoformat(),
+                        "owner/repo2": now.isoformat(),
+                    },
                 }
-            })
+            )
         )
         cache = load_cache(cache_file)
         assert len(cache.repo_activity) == 2
@@ -135,11 +137,13 @@ class TestCacheWithRepoActivity:
         cache_file = tmp_path / "cache.json"
         now = datetime.now(timezone.utc)
         cache_file.write_text(
-            json.dumps({
-                "seen_prs": [1, 2],
-                "pr_statuses": {"1": "waiting"},
-                "last_checked": now.isoformat(),
-            })
+            json.dumps(
+                {
+                    "seen_prs": [1, 2],
+                    "pr_statuses": {"1": "waiting"},
+                    "last_checked": now.isoformat(),
+                }
+            )
         )
         cache = load_cache(cache_file)
         assert cache.repo_activity == {}

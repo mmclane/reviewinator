@@ -75,8 +75,7 @@ def save_cache(cache: Cache, cache_path: Path) -> None:
         "pr_statuses": cache.pr_statuses,
         "last_checked": cache.last_checked.isoformat() if cache.last_checked else None,
         "repo_activity": {
-            repo: timestamp.isoformat()
-            for repo, timestamp in cache.repo_activity.items()
+            repo: timestamp.isoformat() for repo, timestamp in cache.repo_activity.items()
         },
     }
 
