@@ -15,8 +15,7 @@ class Config:
     """Application configuration."""
 
     github_token: str
-    review_request_repos: list[str]
-    created_pr_repos: list[str]
+    excluded_repos: list[str]
     created_pr_filter: str
     refresh_interval: int = 300
 
@@ -59,24 +58,13 @@ def load_config(config_path: Path) -> Config:
     if "github_token" not in data:
         raise ConfigError("Missing required field: github_token")
 
-    # Handle backward compatibility: repos -> review_request_repos
-    if "review_request_repos" in data:
-        review_request_repos = data["review_request_repos"]
-    elif "repos" in data:
-        review_request_repos = data["repos"]
-    else:
-        raise ConfigError("Missing required field: review_request_repos (or repos)")
-
-    if not isinstance(review_request_repos, list) or not review_request_repos:
-        raise ConfigError("review_request_repos must be a non-empty list")
-
     # Optional fields with defaults
-    created_pr_repos = data.get("created_pr_repos", [])
-    if not isinstance(created_pr_repos, list):
-        raise ConfigError("created_pr_repos must be a list")
+    excluded_repos = data.get("excluded_repos", [])
+    if not isinstance(excluded_repos, list):
+        raise ConfigError("excluded_repos must be a list")
 
-    created_pr_filter = data.get("created_pr_filter", "waiting")
-    valid_filters = ["all", "waiting", "needs_attention"]
+    created_pr_filter = data.get("created_pr_filter", "either")
+    valid_filters = ["all", "waiting", "needs_attention", "either"]
     if created_pr_filter not in valid_filters:
         raise ConfigError(
             f"created_pr_filter must be one of: {', '.join(valid_filters)} "
@@ -87,8 +75,7 @@ def load_config(config_path: Path) -> Config:
 
     return Config(
         github_token=data["github_token"],
-        review_request_repos=review_request_repos,
-        created_pr_repos=created_pr_repos,
+        excluded_repos=excluded_repos,
         created_pr_filter=created_pr_filter,
         refresh_interval=refresh_interval,
     )

@@ -15,15 +15,11 @@ class TestLoadConfig:
         config_file = tmp_path / "config.yaml"
         config_file.write_text("""
 github_token: ghp_test123
-review_request_repos:
-  - owner/repo1
-  - org/repo2
 refresh_interval: 600
 """)
         config = load_config(config_file)
 
         assert config.github_token == "ghp_test123"
-        assert config.review_request_repos == ["owner/repo1", "org/repo2"]
         assert config.refresh_interval == 600
 
     def test_load_config_default_refresh_interval(self, tmp_path: Path) -> None:
@@ -31,8 +27,6 @@ refresh_interval: 600
         config_file = tmp_path / "config.yaml"
         config_file.write_text("""
 github_token: ghp_test123
-review_request_repos:
-  - owner/repo1
 """)
         config = load_config(config_file)
 
@@ -48,24 +42,6 @@ repos:
         with pytest.raises(ConfigError, match="github_token"):
             load_config(config_file)
 
-    def test_load_config_missing_repos_raises(self, tmp_path: Path) -> None:
-        """Should raise ConfigError when repos is missing."""
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text("""
-github_token: ghp_test123
-""")
-        with pytest.raises(ConfigError, match="review_request_repos"):
-            load_config(config_file)
-
-    def test_load_config_empty_repos_raises(self, tmp_path: Path) -> None:
-        """Should raise ConfigError when repos list is empty."""
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text("""
-github_token: ghp_test123
-review_request_repos: []
-""")
-        with pytest.raises(ConfigError, match="review_request_repos"):
-            load_config(config_file)
 
     def test_load_config_file_not_found_raises(self, tmp_path: Path) -> None:
         """Should raise ConfigError when file doesn't exist."""
@@ -74,48 +50,48 @@ review_request_repos: []
         with pytest.raises(ConfigError, match="not found"):
             load_config(config_file)
 
-    def test_load_config_with_created_pr_repos(self, tmp_path: Path) -> None:
-        """Test loading config with created_pr_repos."""
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            "github_token: test_token\n"
-            "review_request_repos:\n"
-            "  - owner/repo1\n"
-            "created_pr_repos:\n"
-            "  - owner/repo2\n"
-            "created_pr_filter: waiting\n"
-        )
-        config = load_config(config_file)
-        assert config.github_token == "test_token"
-        assert config.review_request_repos == ["owner/repo1"]
-        assert config.created_pr_repos == ["owner/repo2"]
-        assert config.created_pr_filter == "waiting"
-
-    def test_load_config_defaults_created_pr_repos_to_empty(self, tmp_path: Path) -> None:
-        """Test config without created_pr_repos defaults to empty list."""
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text("github_token: test_token\nreview_request_repos:\n  - owner/repo1\n")
-        config = load_config(config_file)
-        assert config.created_pr_repos == []
-        assert config.created_pr_filter == "waiting"  # default
-
-    def test_load_config_backward_compat_repos(self, tmp_path: Path) -> None:
-        """Test backward compatibility with 'repos' field."""
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text("github_token: test_token\nrepos:\n  - owner/repo1\n")
-        config = load_config(config_file)
-        assert config.review_request_repos == ["owner/repo1"]
 
     def test_load_config_invalid_created_pr_filter_raises(self, tmp_path: Path) -> None:
         """Test invalid created_pr_filter raises error."""
         config_file = tmp_path / "config.yaml"
         config_file.write_text(
             "github_token: test_token\n"
-            "review_request_repos:\n"
-            "  - owner/repo1\n"
             "created_pr_filter: invalid\n"
         )
         with pytest.raises(ConfigError, match="created_pr_filter must be one of"):
+            load_config(config_file)
+
+    def test_load_config_with_excluded_repos(self, tmp_path: Path) -> None:
+        """Test loading config with excluded_repos field."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos:
+  - owner/repo1
+  - owner/repo2
+"""
+        )
+        config = load_config(config_file)
+        assert config.excluded_repos == ["owner/repo1", "owner/repo2"]
+
+    def test_load_config_excluded_repos_defaults_to_empty_list(self, tmp_path: Path) -> None:
+        """Test excluded_repos defaults to empty list when not specified."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("github_token: test_token\n")
+        config = load_config(config_file)
+        assert config.excluded_repos == []
+
+    def test_load_config_excluded_repos_must_be_list(self, tmp_path: Path) -> None:
+        """Test excluded_repos must be a list."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos: "not-a-list"
+"""
+        )
+        with pytest.raises(ConfigError, match="excluded_repos must be a list"):
             load_config(config_file)
 
 
