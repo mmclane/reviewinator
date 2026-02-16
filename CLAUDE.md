@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Reviewinator is a macOS menu bar app that shows pending GitHub PR reviews. It polls GitHub for PRs where you're requested as a reviewer, filters to configured repos, and sends macOS notifications for new review requests.
+Reviewinator is a macOS menu bar app that shows pending GitHub PR reviews. It polls GitHub for PRs where you're requested as a reviewer and PRs you've created, excluding configured repos, and sends macOS notifications for new review requests.
 
 ## Development Commands
 
@@ -39,8 +39,16 @@ Using TDD:
 Create `~/.config/reviewinator/config.yaml`:
 ```yaml
 github_token: ghp_your_token_here
-repos:
-  - owner/repo1
-  - org/repo2
+excluded_repos:
+  - owner/archived-repo
+  - org/old-project
+created_pr_filter: either  # Options: all, waiting, needs_attention, either
 refresh_interval: 300  # optional, defaults to 300 seconds
 ```
+
+The `excluded_repos` field is optional and lists repos to exclude from tracking.
+The `created_pr_filter` field controls which of your created PRs to show:
+- `either` (default): Show PRs waiting for review OR needing changes
+- `waiting`: Show only PRs waiting for initial review
+- `needs_attention`: Show only PRs with changes requested
+- `all`: Show all your open PRs
