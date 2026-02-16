@@ -177,9 +177,8 @@ class TestGitHubClient:
 
         config = Config(
             github_token="test",
-            review_request_repos=["org/repo1", "org/repo2"],
-            created_pr_repos=[],
-            created_pr_filter="waiting",
+            excluded_repos=["other/repo"],
+            created_pr_filter="either",
         )
         client = GitHubClient(mock_github, config)
         prs = client._fetch_review_requests()
@@ -200,9 +199,8 @@ class TestGitHubClient:
 
         config = Config(
             github_token="test",
-            review_request_repos=["org/repo1"],
-            created_pr_repos=[],
-            created_pr_filter="waiting",
+            excluded_repos=[],
+            created_pr_filter="either",
         )
         client = GitHubClient(mock_github, config)
         client._fetch_review_requests()

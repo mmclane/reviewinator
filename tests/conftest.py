@@ -30,8 +30,7 @@ def sample_config():
 
     return Config(
         github_token="ghp_test123",
-        review_request_repos=["org/repo1", "org/repo2"],
-        created_pr_repos=[],
-        created_pr_filter="waiting",
+        excluded_repos=[],
+        created_pr_filter="either",
         refresh_interval=300,
     )

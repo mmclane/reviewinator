@@ -118,28 +118,24 @@ class GitHubClient:
         else:
             return "waiting"
 
-    def _fetch_created_prs(self, repos: list[str], filter_type: str) -> list[PullRequest]:
+    def _fetch_created_prs(self, filter_type: str) -> list[PullRequest]:
         """Fetch PRs created by the current user.
 
         Args:
-            repos: List of repos to filter to.
-            filter_type: Filter type - "all", "waiting", or "needs_attention".
+            filter_type: Filter type - "all", "waiting", "needs_attention", or "either".
 
         Returns:
             List of PullRequest objects with type="created".
         """
-        if not repos:
-            return []
-
         query = f"is:pr is:open author:{self.username}"
         issues = self._github.search_issues(query)
 
-        repos_set = set(repos)
+        excluded_set = set(self._config.excluded_repos)
         prs = []
 
         for issue in issues:
             repo_name = issue.repository.full_name
-            if repo_name not in repos_set:
+            if repo_name in excluded_set:
                 continue
 
             # Get the actual PR object to check reviews
@@ -151,6 +147,8 @@ class GitHubClient:
             if filter_type == "waiting" and review_status != "waiting":
                 continue
             elif filter_type == "needs_attention" and review_status != "changes_requested":
+                continue
+            elif filter_type == "either" and review_status not in ("waiting", "changes_requested"):
                 continue
 
             pr = PullRequest(
@@ -177,12 +175,12 @@ class GitHubClient:
         query = f"is:pr is:open review-requested:{self.username}"
         issues = self._github.search_issues(query)
 
-        repos_set = set(self._config.review_request_repos)
+        excluded_set = set(self._config.excluded_repos)
         prs = []
 
         for issue in issues:
             repo_name = issue.repository.full_name
-            if repo_name not in repos_set:
+            if repo_name in excluded_set:
                 continue
 
             pr = PullRequest(
@@ -207,8 +205,5 @@ class GitHubClient:
             Combined list of review request and created PRs.
         """
         review_requests = self._fetch_review_requests()
-        created_prs = self._fetch_created_prs(
-            self._config.created_pr_repos,
-            self._config.created_pr_filter,
-        )
+        created_prs = self._fetch_created_prs(self._config.created_pr_filter)
         return review_requests + created_prs

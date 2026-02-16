@@ -42,7 +42,6 @@ repos:
         with pytest.raises(ConfigError, match="github_token"):
             load_config(config_file)
 
-
     def test_load_config_file_not_found_raises(self, tmp_path: Path) -> None:
         """Should raise ConfigError when file doesn't exist."""
         config_file = tmp_path / "nonexistent.yaml"
@@ -50,14 +49,10 @@ repos:
         with pytest.raises(ConfigError, match="not found"):
             load_config(config_file)
 
-
     def test_load_config_invalid_created_pr_filter_raises(self, tmp_path: Path) -> None:
         """Test invalid created_pr_filter raises error."""
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            "github_token: test_token\n"
-            "created_pr_filter: invalid\n"
-        )
+        config_file.write_text("github_token: test_token\ncreated_pr_filter: invalid\n")
         with pytest.raises(ConfigError, match="created_pr_filter must be one of"):
             load_config(config_file)
 
