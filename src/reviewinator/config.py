@@ -1,5 +1,6 @@
 """Configuration loading and validation."""
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -63,6 +64,17 @@ def load_config(config_path: Path) -> Config:
     # Default excluded_review_teams to empty list if not present
     if "excluded_review_teams" not in data:
         data["excluded_review_teams"] = []
+
+    # Validate excluded_review_teams
+    if not isinstance(data["excluded_review_teams"], list):
+        raise ConfigError("excluded_review_teams must be a list")
+
+    team_pattern = re.compile(r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$")
+    for team in data["excluded_review_teams"]:
+        if not team_pattern.match(team):
+            raise ConfigError(
+                f"excluded_review_teams entries must be in format 'org/team' (got: {team})"
+            )
 
     # Optional fields with defaults
     excluded_repos = data.get("excluded_repos", [])

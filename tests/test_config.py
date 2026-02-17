@@ -165,6 +165,109 @@ activity_lookback_days: 14
         config = load_config(config_file)
         assert config.excluded_review_teams == []
 
+    def test_excluded_review_teams_accepts_valid_format(self, tmp_path: Path) -> None:
+        """Test that excluded_review_teams accepts valid 'org/team' format."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos: []
+excluded_review_teams:
+  - snapptinc/all-engineers
+  - myorg/team-foo
+created_pr_filter: all
+activity_lookback_days: 14
+"""
+        )
+        config = load_config(config_file)
+        assert config.excluded_review_teams == ["snapptinc/all-engineers", "myorg/team-foo"]
+
+    def test_excluded_review_teams_accepts_underscores(self, tmp_path: Path) -> None:
+        """Test that excluded_review_teams accepts underscores in org and team names."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos: []
+excluded_review_teams:
+  - my_org/team_foo
+  - org_name/team-name_123
+created_pr_filter: all
+activity_lookback_days: 14
+"""
+        )
+        config = load_config(config_file)
+        assert config.excluded_review_teams == ["my_org/team_foo", "org_name/team-name_123"]
+
+    def test_excluded_review_teams_rejects_no_slash(self, tmp_path: Path) -> None:
+        """Test that excluded_review_teams rejects entries without slash."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos: []
+excluded_review_teams:
+  - invalidteam
+created_pr_filter: all
+activity_lookback_days: 14
+"""
+        )
+        with pytest.raises(
+            ConfigError, match="excluded_review_teams entries must be in format 'org/team'"
+        ):
+            load_config(config_file)
+
+    def test_excluded_review_teams_rejects_empty_org(self, tmp_path: Path) -> None:
+        """Test that excluded_review_teams rejects entries with empty org."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos: []
+excluded_review_teams:
+  - /team
+created_pr_filter: all
+activity_lookback_days: 14
+"""
+        )
+        with pytest.raises(
+            ConfigError, match="excluded_review_teams entries must be in format 'org/team'"
+        ):
+            load_config(config_file)
+
+    def test_excluded_review_teams_rejects_empty_team(self, tmp_path: Path) -> None:
+        """Test that excluded_review_teams rejects entries with empty team."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos: []
+excluded_review_teams:
+  - org/
+created_pr_filter: all
+activity_lookback_days: 14
+"""
+        )
+        with pytest.raises(
+            ConfigError, match="excluded_review_teams entries must be in format 'org/team'"
+        ):
+            load_config(config_file)
+
+    def test_excluded_review_teams_rejects_non_list(self, tmp_path: Path) -> None:
+        """Test that excluded_review_teams rejects non-list values."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos: []
+excluded_review_teams: "not-a-list"
+created_pr_filter: all
+activity_lookback_days: 14
+"""
+        )
+        with pytest.raises(ConfigError, match="excluded_review_teams must be a list"):
+            load_config(config_file)
+
 
 class TestConfigPaths:
     """Tests for config path utilities."""
