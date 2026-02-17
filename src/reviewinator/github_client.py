@@ -234,6 +234,18 @@ class GitHubClient:
             if repo_name in excluded_set:
                 continue
 
+            # Only fetch full PR for team filtering if needed
+            if self._config.excluded_review_teams:
+                try:
+                    repo = self._github.get_repo(repo_name)
+                    pr_obj = repo.get_pull(issue.number)
+
+                    if not self._should_show_review_request(pr_obj, self.username):
+                        continue
+                except Exception:
+                    # Fail open: show PR if can't check teams
+                    pass
+
             pr = PullRequest(
                 id=issue.id,
                 number=issue.number,

@@ -356,3 +356,71 @@ class TestGitHubClient:
 
         result = client_with_excluded_teams._should_show_review_request(mock_pr, "testuser")
         assert result is True
+
+    def test_fetch_review_requests_filters_excluded_teams(self) -> None:
+        """Test that fetch_review_requests filters PRs based on excluded teams."""
+        from unittest.mock import Mock
+
+        mock_github = MagicMock()
+        mock_user = Mock()
+        mock_user.login = "testuser"
+        mock_github.get_user.return_value = mock_user
+
+        config = Config(
+            github_token="test_token",
+            excluded_repos=[],
+            excluded_review_teams=["testorg/all-engineers"],
+            created_pr_filter="all",
+            activity_lookback_days=14,
+        )
+
+        # Mock search results
+        mock_issue1 = Mock()
+        mock_issue1.id = 1
+        mock_issue1.number = 101
+        mock_issue1.title = "PR 1 - individual request"
+        mock_issue1.user.login = "author1"
+        mock_issue1.repository.full_name = "testorg/repo1"
+        mock_issue1.html_url = "https://github.com/testorg/repo1/pull/101"
+        mock_issue1.created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+        mock_issue2 = Mock()
+        mock_issue2.id = 2
+        mock_issue2.number = 102
+        mock_issue2.title = "PR 2 - only excluded team"
+        mock_issue2.user.login = "author2"
+        mock_issue2.repository.full_name = "testorg/repo1"
+        mock_issue2.html_url = "https://github.com/testorg/repo1/pull/102"
+        mock_issue2.created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+        mock_github.search_issues.return_value = [mock_issue1, mock_issue2]
+
+        # Mock repo.get_pull() for PR objects
+        mock_repo = Mock()
+
+        # PR 1: individually requested
+        mock_pr1 = Mock()
+        mock_user = Mock()
+        mock_user.login = "testuser"
+        mock_pr1.requested_reviewers = [mock_user]
+        mock_pr1.requested_teams = []
+
+        # PR 2: only excluded team
+        mock_pr2 = Mock()
+        mock_pr2.requested_reviewers = []
+        mock_team = Mock()
+        mock_org = Mock()
+        mock_org.login = "testorg"
+        mock_team.organization = mock_org
+        mock_team.slug = "all-engineers"
+        mock_pr2.requested_teams = [mock_team]
+
+        mock_repo.get_pull = Mock(side_effect=lambda num: mock_pr1 if num == 101 else mock_pr2)
+        mock_github.get_repo.return_value = mock_repo
+
+        client = GitHubClient(mock_github, config)
+        prs = client._fetch_review_requests()
+
+        # Should only return PR 1 (individually requested)
+        assert len(prs) == 1
+        assert prs[0].number == 101
