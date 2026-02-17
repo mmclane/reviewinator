@@ -3,7 +3,29 @@
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
+import pytest
+
+from reviewinator.config import Config
 from reviewinator.github_client import GitHubClient, PullRequest, format_age
+
+
+@pytest.fixture
+def mock_github():
+    """Create mock GitHub instance."""
+    return MagicMock()
+
+
+@pytest.fixture
+def client_with_excluded_teams(mock_github):
+    """Create GitHubClient with excluded_review_teams configured."""
+    config = Config(
+        github_token="test_token",
+        excluded_repos=[],
+        excluded_review_teams=["testorg/all-engineers"],
+        created_pr_filter="all",
+        activity_lookback_days=14,
+    )
+    return GitHubClient(mock_github, config)
 
 
 class TestPullRequest:
@@ -214,3 +236,123 @@ class TestGitHubClient:
         assert "review-requested:testuser" in call_args
         assert "is:pr" in call_args
         assert "is:open" in call_args
+
+    def test_should_show_review_request_individual_reviewer(
+        self, client_with_excluded_teams
+    ) -> None:
+        """Should show PR when user is individually requested."""
+        from unittest.mock import Mock
+
+        # Mock PR with individual reviewer
+        mock_pr = Mock()
+        mock_user = Mock()
+        mock_user.login = "testuser"
+        mock_pr.requested_reviewers = [mock_user]
+        mock_pr.requested_teams = []
+
+        result = client_with_excluded_teams._should_show_review_request(mock_pr, "testuser")
+        assert result is True
+
+    def test_should_show_review_request_only_excluded_team(
+        self, client_with_excluded_teams
+    ) -> None:
+        """Should hide PR when only requested via excluded team."""
+        from unittest.mock import Mock
+
+        # Mock PR with only excluded team
+        mock_pr = Mock()
+        mock_pr.requested_reviewers = []
+        mock_team = Mock()
+        mock_org = Mock()
+        mock_org.login = "testorg"
+        mock_team.organization = mock_org
+        mock_team.slug = "all-engineers"
+        mock_pr.requested_teams = [mock_team]
+
+        result = client_with_excluded_teams._should_show_review_request(mock_pr, "testuser")
+        assert result is False
+
+    def test_should_show_review_request_non_excluded_team(self, client_with_excluded_teams) -> None:
+        """Should show PR when requested via non-excluded team."""
+        from unittest.mock import Mock
+
+        # Mock PR with non-excluded team
+        mock_pr = Mock()
+        mock_pr.requested_reviewers = []
+        mock_team = Mock()
+        mock_org = Mock()
+        mock_org.login = "testorg"
+        mock_team.organization = mock_org
+        mock_team.slug = "team-b"
+        mock_pr.requested_teams = [mock_team]
+
+        result = client_with_excluded_teams._should_show_review_request(mock_pr, "testuser")
+        assert result is True
+
+    def test_should_show_review_request_mixed_teams(self, client_with_excluded_teams) -> None:
+        """Should show PR when mix of excluded and non-excluded teams."""
+        from unittest.mock import Mock
+
+        # Mock PR with both excluded and non-excluded teams
+        mock_pr = Mock()
+        mock_pr.requested_reviewers = []
+
+        # Excluded team
+        mock_team_a = Mock()
+        mock_org = Mock()
+        mock_org.login = "testorg"
+        mock_team_a.organization = mock_org
+        mock_team_a.slug = "all-engineers"
+
+        # Non-excluded team
+        mock_team_b = Mock()
+        mock_team_b.organization = mock_org
+        mock_team_b.slug = "team-b"
+
+        mock_pr.requested_teams = [mock_team_a, mock_team_b]
+
+        result = client_with_excluded_teams._should_show_review_request(mock_pr, "testuser")
+        assert result is True
+
+    def test_should_show_review_request_no_reviewers_fail_open(
+        self, client_with_excluded_teams
+    ) -> None:
+        """Should show PR when no reviewers (fail open)."""
+        from unittest.mock import Mock
+
+        # Mock PR with empty reviewers
+        mock_pr = Mock()
+        mock_pr.requested_reviewers = []
+        mock_pr.requested_teams = []
+
+        result = client_with_excluded_teams._should_show_review_request(mock_pr, "testuser")
+        assert result is True
+
+    def test_should_show_review_request_none_reviewers_fail_open(
+        self, client_with_excluded_teams
+    ) -> None:
+        """Should show PR when reviewers are None (fail open)."""
+        from unittest.mock import Mock
+
+        # Mock PR with None reviewers
+        mock_pr = Mock()
+        mock_pr.requested_reviewers = None
+        mock_pr.requested_teams = None
+
+        result = client_with_excluded_teams._should_show_review_request(mock_pr, "testuser")
+        assert result is True
+
+    def test_should_show_review_request_team_missing_org(self, client_with_excluded_teams) -> None:
+        """Should show PR when team missing org (fail open)."""
+        from unittest.mock import Mock
+
+        # Mock PR with team missing org
+        mock_pr = Mock()
+        mock_pr.requested_reviewers = []
+        mock_team = Mock()
+        mock_team.organization = None  # Missing org
+        mock_team.slug = "all-engineers"
+        mock_pr.requested_teams = [mock_team]
+
+        result = client_with_excluded_teams._should_show_review_request(mock_pr, "testuser")
+        assert result is True

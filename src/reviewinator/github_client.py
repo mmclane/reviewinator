@@ -118,6 +118,57 @@ class GitHubClient:
         else:
             return "waiting"
 
+    def _should_show_review_request(self, pr, username: str) -> bool:
+        """Determine if a PR should be shown based on team filtering.
+
+        Returns True if:
+        - User is individually requested, OR
+        - User is requested via any non-excluded team, OR
+        - Unable to determine (fail open)
+
+        Returns False only if:
+        - Requested exclusively via excluded teams
+
+        Args:
+            pr: PyGithub PullRequest object.
+            username: Username to check for.
+
+        Returns:
+            True if PR should be shown, False otherwise.
+        """
+        try:
+            # Extract individual reviewers
+            individual_reviewers = [user.login for user in (pr.requested_reviewers or [])]
+
+            # Extract team reviewers as "org/slug"
+            team_reviewers = []
+            for team in pr.requested_teams or []:
+                # Skip teams missing org or slug
+                if not team.organization or not team.slug:
+                    continue
+                team_id = f"{team.organization.login}/{team.slug}"
+                team_reviewers.append(team_id)
+
+            # Show if individually requested
+            if username in individual_reviewers:
+                return True
+
+            # Show if requested via any non-excluded team
+            excluded_set = set(self._config.excluded_review_teams)
+            if any(team not in excluded_set for team in team_reviewers):
+                return True
+
+            # Hide if only requested via excluded teams
+            if team_reviewers and all(team in excluded_set for team in team_reviewers):
+                return False
+
+            # Fail open: show if no reviewers/teams or uncertain
+            return True
+
+        except Exception:
+            # Fail open on any error
+            return True
+
     def _fetch_created_prs(self, filter_type: str) -> list[PullRequest]:
         """Fetch PRs created by the current user.
 
