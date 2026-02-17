@@ -1,4 +1,4 @@
-.PHONY: setup test test-cov lint format run clean
+.PHONY: setup test test-cov lint format run clean build
 
 setup:
 	uv sync --all-extras
@@ -20,5 +20,9 @@ format:
 run:
 	uv run python -m reviewinator
 
+build:
+	python setup.py py2app
+	@echo "✓ Built dist/Reviewinator.app"
+
 clean:
-	rm -rf .pytest_cache .ruff_cache __pycache__ .coverage dist build *.egg-info
+	rm -rf .pytest_cache .ruff_cache __pycache__ .coverage dist build *.egg-info *.app.zip
