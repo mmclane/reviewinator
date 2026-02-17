@@ -151,6 +151,20 @@ activity_lookback_days: 0
         with pytest.raises(ConfigError, match="activity_lookback_days must be a positive integer"):
             load_config(config_file)
 
+    def test_excluded_review_teams_defaults_to_empty_list(self, tmp_path: Path) -> None:
+        """Test that excluded_review_teams defaults to empty list if not specified."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+github_token: test_token
+excluded_repos: []
+created_pr_filter: all
+activity_lookback_days: 14
+"""
+        )
+        config = load_config(config_file)
+        assert config.excluded_review_teams == []
+
 
 class TestConfigPaths:
     """Tests for config path utilities."""

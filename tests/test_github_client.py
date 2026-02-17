@@ -178,6 +178,7 @@ class TestGitHubClient:
         config = Config(
             github_token="test",
             excluded_repos=["other/repo"],
+            excluded_review_teams=[],
             created_pr_filter="either",
             activity_lookback_days=14,
         )
@@ -201,6 +202,7 @@ class TestGitHubClient:
         config = Config(
             github_token="test",
             excluded_repos=[],
+            excluded_review_teams=[],
             created_pr_filter="either",
             activity_lookback_days=14,
         )

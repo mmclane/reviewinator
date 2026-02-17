@@ -204,6 +204,7 @@ class TestReviewinatorApp:
         config = Config(
             github_token="test",
             excluded_repos=[],
+            excluded_review_teams=[],
             created_pr_filter="either",
             activity_lookback_days=14,
             refresh_interval=300,
@@ -369,6 +370,7 @@ def test_menu_filters_old_repos_from_display(sample_config, tmp_path):
     config = Config(
         github_token="test",
         excluded_repos=[],
+        excluded_review_teams=[],
         created_pr_filter="either",
         activity_lookback_days=14,
         refresh_interval=300,

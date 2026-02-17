@@ -16,6 +16,7 @@ class Config:
 
     github_token: str
     excluded_repos: list[str]
+    excluded_review_teams: list[str]
     created_pr_filter: str
     activity_lookback_days: int
     refresh_interval: int = 300
@@ -59,6 +60,10 @@ def load_config(config_path: Path) -> Config:
     if "github_token" not in data:
         raise ConfigError("Missing required field: github_token")
 
+    # Default excluded_review_teams to empty list if not present
+    if "excluded_review_teams" not in data:
+        data["excluded_review_teams"] = []
+
     # Optional fields with defaults
     excluded_repos = data.get("excluded_repos", [])
     if not isinstance(excluded_repos, list):
@@ -81,6 +86,7 @@ def load_config(config_path: Path) -> Config:
     return Config(
         github_token=data["github_token"],
         excluded_repos=excluded_repos,
+        excluded_review_teams=data["excluded_review_teams"],
         created_pr_filter=created_pr_filter,
         activity_lookback_days=activity_lookback_days,
         refresh_interval=refresh_interval,
