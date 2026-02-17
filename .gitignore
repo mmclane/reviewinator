@@ -26,7 +26,8 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# py2app macOS app bundles
+# py2app macOS app bundles and distribution artifacts
+Reviewinator-*.app.zip
 *.app.zip
 
 # PyInstaller
