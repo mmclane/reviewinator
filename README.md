@@ -18,29 +18,29 @@ A macOS menu bar app that shows pending GitHub PR reviews.
 1. Download the latest `Reviewinator-vX.Y.Z.app.zip` from [Releases](https://github.com/mmclane/reviewinator/releases)
 2. Unzip the file
 3. Move `Reviewinator.app` to your Applications folder
-4. Right-click the app and select "Open" (first time only, due to unsigned app)
-5. Click "Open" in the security dialog
+4. Create configuration file (see Configuration section below)
+5. Right-click the app and select "Open" (first time only, due to unsigned app)
+6. Click "Open" in the security dialog
 
 ### Auto-Start at Login
 
 To have Reviewinator launch automatically when you log in:
 
-1. Open **System Settings > General > Login Items**
-2. Click the **+** button under "Open at Login"
-3. Navigate to `Reviewinator.app` and select it
-4. The app will now start automatically on login
+1. Open System Settings (macOS Ventura+) or System Preferences (older versions)
+2. Navigate to General > Login Items (or Users & Groups > Login Items on older macOS)
+3. Click the **+** button under "Open at Login"
+4. Navigate to `Reviewinator.app` and select it
+5. The app will now start automatically on login
 
 ## Configuration
 
 Create `~/.config/reviewinator/config.yaml`:
 
 ```yaml
+# Minimal configuration
 github_token: ghp_your_token_here
-excluded_repos: []
-excluded_review_teams: []
-created_pr_filter: either
-activity_lookback_days: 14
-refresh_interval: 300
+
+# Optional: see CLAUDE.md for additional configuration options
 ```
 
 See [CLAUDE.md](CLAUDE.md) for detailed configuration options.
@@ -52,11 +52,10 @@ To get a GitHub token:
 
 ## Usage
 
-```bash
-make run
-```
-
-The app will appear in your menu bar. Click the icon to see pending reviews.
+After installation and configuration:
+1. Launch Reviewinator from your Applications folder
+2. The app will appear in your menu bar
+3. Click the icon to see pending reviews
 
 ## Development
 
@@ -76,7 +75,7 @@ make run
 ### Building the App
 
 ```bash
-# Build macOS .app bundle
+# Build macOS .app bundle (requires dependencies: run make setup first)
 make build
 
 # Test the built app
