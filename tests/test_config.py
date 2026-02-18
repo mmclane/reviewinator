@@ -56,24 +56,31 @@ repos:
         with pytest.raises(ConfigError, match="created_pr_filter must be one of"):
             load_config(config_file)
 
-    def test_load_config_created_pr_filter_either(self, tmp_path: Path) -> None:
-        """Test created_pr_filter accepts 'either' option."""
+    def test_load_config_created_pr_filter_any(self, tmp_path: Path) -> None:
+        """Test created_pr_filter accepts 'any' option."""
         config_file = tmp_path / "config.yaml"
         config_file.write_text(
             """
 github_token: test_token
-created_pr_filter: either
+created_pr_filter: any
 """
         )
         config = load_config(config_file)
-        assert config.created_pr_filter == "either"
+        assert config.created_pr_filter == "any"
 
-    def test_load_config_created_pr_filter_defaults_to_either(self, tmp_path: Path) -> None:
-        """Test created_pr_filter defaults to 'either'."""
+    def test_load_config_created_pr_filter_defaults_to_any(self, tmp_path: Path) -> None:
+        """Test created_pr_filter defaults to 'any'."""
         config_file = tmp_path / "config.yaml"
         config_file.write_text("github_token: test_token\n")
         config = load_config(config_file)
-        assert config.created_pr_filter == "either"
+        assert config.created_pr_filter == "any"
+
+    def test_load_config_created_pr_filter_either_rejected(self, tmp_path: Path) -> None:
+        """Test created_pr_filter rejects old 'either' value."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("github_token: test_token\ncreated_pr_filter: either\n")
+        with pytest.raises(ConfigError, match="created_pr_filter must be one of"):
+            load_config(config_file)
 
     def test_load_config_with_excluded_repos(self, tmp_path: Path) -> None:
         """Test loading config with excluded_repos field."""

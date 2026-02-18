@@ -81,8 +81,8 @@ def load_config(config_path: Path) -> Config:
     if not isinstance(excluded_repos, list):
         raise ConfigError("excluded_repos must be a list")
 
-    created_pr_filter = data.get("created_pr_filter", "either")
-    valid_filters = ["all", "waiting", "needs_attention", "either"]
+    created_pr_filter = data.get("created_pr_filter", "any")
+    valid_filters = ["all", "waiting", "needs_attention", "any"]
     if created_pr_filter not in valid_filters:
         raise ConfigError(
             f"created_pr_filter must be one of: {', '.join(valid_filters)} "
