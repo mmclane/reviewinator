@@ -476,7 +476,7 @@ class TestFetchCreatedPRsFilter:
         """'any' filter should include waiting PRs."""
         mock_github = MagicMock()
         mock_github.get_user.return_value.login = "me"
-        mock_issue, mock_pr_obj = self._make_issue("PENDING")
+        mock_issue, mock_pr_obj = self._make_issue("DUMMY")
         mock_pr_obj.get_reviews.return_value = []  # no reviews = waiting
         mock_github.search_issues.return_value = [mock_issue]
         mock_github.get_repo.return_value.get_pull.return_value = mock_pr_obj

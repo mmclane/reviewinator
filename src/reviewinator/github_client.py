@@ -173,7 +173,7 @@ class GitHubClient:
         """Fetch PRs created by the current user.
 
         Args:
-            filter_type: Filter type - "all", "waiting", "needs_attention", or "either".
+            filter_type: Filter type - "all", "waiting", "needs_attention", or "any".
 
         Returns:
             List of PullRequest objects with type="created".
