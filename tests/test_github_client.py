@@ -201,7 +201,7 @@ class TestGitHubClient:
             github_token="test",
             excluded_repos=["other/repo"],
             excluded_review_teams=[],
-            created_pr_filter="either",
+            created_pr_filter="any",
             activity_lookback_days=14,
         )
         client = GitHubClient(mock_github, config)
@@ -225,7 +225,7 @@ class TestGitHubClient:
             github_token="test",
             excluded_repos=[],
             excluded_review_teams=[],
-            created_pr_filter="either",
+            created_pr_filter="any",
             activity_lookback_days=14,
         )
         client = GitHubClient(mock_github, config)
