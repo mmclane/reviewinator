@@ -424,3 +424,105 @@ class TestGitHubClient:
         # Should only return PR 1 (individually requested)
         assert len(prs) == 1
         assert prs[0].number == 101
+
+
+class TestFetchCreatedPRsFilter:
+    """Tests for _fetch_created_prs filter behavior."""
+
+    def _make_client(self, mock_github, filter_type):
+        config = Config(
+            github_token="test",
+            excluded_repos=[],
+            excluded_review_teams=[],
+            created_pr_filter=filter_type,
+            activity_lookback_days=14,
+        )
+        return GitHubClient(mock_github, config)
+
+    def _make_issue(self, status_state):
+        """Make a mock issue and a PR object with the given review state."""
+        mock_issue = MagicMock()
+        mock_issue.id = 1
+        mock_issue.number = 42
+        mock_issue.title = "Test PR"
+        mock_issue.user.login = "me"
+        mock_issue.repository.full_name = "org/repo"
+        mock_issue.html_url = "https://github.com/org/repo/pull/42"
+        mock_issue.created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+        mock_review = MagicMock()
+        mock_review.state = status_state
+
+        mock_pr_obj = MagicMock()
+        mock_pr_obj.get_reviews.return_value = [mock_review]
+
+        return mock_issue, mock_pr_obj
+
+    def test_any_filter_includes_approved(self) -> None:
+        """'any' filter should include approved PRs."""
+        mock_github = MagicMock()
+        mock_github.get_user.return_value.login = "me"
+        mock_issue, mock_pr_obj = self._make_issue("APPROVED")
+        mock_github.search_issues.return_value = [mock_issue]
+        mock_github.get_repo.return_value.get_pull.return_value = mock_pr_obj
+
+        client = self._make_client(mock_github, "any")
+        prs = client._fetch_created_prs("any")
+
+        assert len(prs) == 1
+        assert prs[0].review_status == "approved"
+
+    def test_any_filter_includes_waiting(self) -> None:
+        """'any' filter should include waiting PRs."""
+        mock_github = MagicMock()
+        mock_github.get_user.return_value.login = "me"
+        mock_issue, mock_pr_obj = self._make_issue("PENDING")
+        mock_pr_obj.get_reviews.return_value = []  # no reviews = waiting
+        mock_github.search_issues.return_value = [mock_issue]
+        mock_github.get_repo.return_value.get_pull.return_value = mock_pr_obj
+
+        client = self._make_client(mock_github, "any")
+        prs = client._fetch_created_prs("any")
+
+        assert len(prs) == 1
+        assert prs[0].review_status == "waiting"
+
+    def test_any_filter_includes_changes_requested(self) -> None:
+        """'any' filter should include changes_requested PRs."""
+        mock_github = MagicMock()
+        mock_github.get_user.return_value.login = "me"
+        mock_issue, mock_pr_obj = self._make_issue("CHANGES_REQUESTED")
+        mock_github.search_issues.return_value = [mock_issue]
+        mock_github.get_repo.return_value.get_pull.return_value = mock_pr_obj
+
+        client = self._make_client(mock_github, "any")
+        prs = client._fetch_created_prs("any")
+
+        assert len(prs) == 1
+        assert prs[0].review_status == "changes_requested"
+
+    def test_waiting_filter_excludes_approved(self) -> None:
+        """'waiting' filter should not include approved PRs."""
+        mock_github = MagicMock()
+        mock_github.get_user.return_value.login = "me"
+        mock_issue, mock_pr_obj = self._make_issue("APPROVED")
+        mock_github.search_issues.return_value = [mock_issue]
+        mock_github.get_repo.return_value.get_pull.return_value = mock_pr_obj
+
+        client = self._make_client(mock_github, "waiting")
+        prs = client._fetch_created_prs("waiting")
+
+        assert len(prs) == 0
+
+    def test_needs_attention_filter_excludes_approved(self) -> None:
+        """'needs_attention' filter should not include approved PRs."""
+        mock_github = MagicMock()
+        mock_github.get_user.return_value.login = "me"
+        mock_issue, mock_pr_obj = self._make_issue("APPROVED")
+        mock_github.search_issues.return_value = [mock_issue]
+        mock_github.get_repo.return_value.get_pull.return_value = mock_pr_obj
+
+        client = self._make_client(mock_github, "needs_attention")
+        prs = client._fetch_created_prs("needs_attention")
+
+        assert len(prs) == 0

@@ -199,7 +199,7 @@ class GitHubClient:
                 continue
             elif filter_type == "needs_attention" and review_status != "changes_requested":
                 continue
-            elif filter_type == "either" and review_status not in ("waiting", "changes_requested"):
+            elif filter_type == "any" and review_status not in ("waiting", "changes_requested", "approved"):
                 continue
 
             pr = PullRequest(
