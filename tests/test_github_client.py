@@ -128,7 +128,7 @@ class TestPullRequestFormatting:
     """Tests for PR display formatting."""
 
     def test_format_menu_item(self) -> None:
-        """Should format PR for menu display."""
+        """Should format review request PR with eyes emoji."""
         now = datetime(2026, 2, 13, 12, 0, 0, tzinfo=timezone.utc)
         pr = PullRequest(
             id=12345,
@@ -144,10 +144,10 @@ class TestPullRequestFormatting:
 
         formatted = pr.format_menu_item(now)
 
-        assert formatted == "#142 Fix login bug (alice, 2h ago)"
+        assert formatted == "👀 #142 Fix login bug (alice, 2h ago)"
 
     def test_format_menu_item_for_created_pr(self) -> None:
-        """Test formatting created PR shows status instead of author."""
+        """Test formatting created PR shows clock emoji for waiting status."""
         pr = PullRequest(
             id=1,
             number=123,
@@ -161,7 +161,75 @@ class TestPullRequestFormatting:
         )
         now = datetime(2024, 1, 1, 14, 0, tzinfo=timezone.utc)
         result = pr.format_menu_item(now)
-        assert result == "#123 Test (waiting, 2h ago)"
+        assert result == "🕐 #123 Test (waiting, 2h ago)"
+
+    def test_format_menu_item_approved(self) -> None:
+        """Test formatting created PR shows checkmark for approved status."""
+        pr = PullRequest(
+            id=2,
+            number=91,
+            title="Update deps",
+            author="me",
+            repo="owner/repo",
+            url="https://url",
+            created_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+            type="created",
+            review_status="approved",
+        )
+        now = datetime(2024, 1, 1, 13, 0, tzinfo=timezone.utc)
+        result = pr.format_menu_item(now)
+        assert result == "✅ #91 Update deps (approved, 1h ago)"
+
+    def test_format_menu_item_changes_requested(self) -> None:
+        """Test formatting created PR shows red circle for changes_requested."""
+        pr = PullRequest(
+            id=3,
+            number=79,
+            title="Refactor auth",
+            author="me",
+            repo="owner/repo",
+            url="https://url",
+            created_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+            type="created",
+            review_status="changes_requested",
+        )
+        now = datetime(2024, 1, 1, 13, 0, tzinfo=timezone.utc)
+        result = pr.format_menu_item(now)
+        assert result == "🔴 #79 Refactor auth (changes_requested, 1h ago)"
+
+    def test_format_menu_item_commented(self) -> None:
+        """Test formatting created PR shows speech bubble for commented."""
+        pr = PullRequest(
+            id=4,
+            number=88,
+            title="Add docs",
+            author="me",
+            repo="owner/repo",
+            url="https://url",
+            created_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+            type="created",
+            review_status="commented",
+        )
+        now = datetime(2024, 1, 1, 13, 0, tzinfo=timezone.utc)
+        result = pr.format_menu_item(now)
+        assert result == "💬 #88 Add docs (commented, 1h ago)"
+
+    def test_format_menu_item_unknown_status_falls_back_to_clock(self) -> None:
+        """Test formatting created PR with unknown/None status uses clock fallback."""
+        pr = PullRequest(
+            id=5,
+            number=99,
+            title="Mystery PR",
+            author="me",
+            repo="owner/repo",
+            url="https://url",
+            created_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+            type="created",
+            review_status=None,
+        )
+        now = datetime(2024, 1, 1, 13, 0, tzinfo=timezone.utc)
+        result = pr.format_menu_item(now)
+        assert result == "🕐 #99 Mystery PR (unknown, 1h ago)"
 
 
 class TestGitHubClient:

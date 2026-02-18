@@ -7,6 +7,14 @@ from github import Github
 
 from reviewinator.config import Config
 
+STATUS_EMOJI = {
+    "review_request": "👀",
+    "waiting": "🕐",
+    "approved": "✅",
+    "changes_requested": "🔴",
+    "commented": "💬",
+}
+
 
 @dataclass
 class PullRequest:
@@ -29,8 +37,8 @@ class PullRequest:
             now: Current time for age calculation. Defaults to UTC now.
 
         Returns:
-            Formatted string like "#142 Fix login bug (alice, 2h ago)" for review requests
-            or "#142 Fix login bug (waiting, 2h ago)" for created PRs.
+            Formatted string like "👀 #142 Fix login bug (alice, 2h ago)" for review requests
+            or "✅ #142 Fix login bug (approved, 2h ago)" for created PRs.
         """
         if now is None:
             now = datetime.now(timezone.utc)
@@ -38,9 +46,11 @@ class PullRequest:
 
         if self.type == "created":
             status = self.review_status or "unknown"
-            return f"#{self.number} {self.title} ({status}, {age})"
+            emoji = STATUS_EMOJI.get(status, "🕐")
+            return f"{emoji} #{self.number} {self.title} ({status}, {age})"
         else:
-            return f"#{self.number} {self.title} ({self.author}, {age})"
+            emoji = STATUS_EMOJI["review_request"]
+            return f"{emoji} #{self.number} {self.title} ({self.author}, {age})"
 
 
 def format_age(created_at: datetime, now: datetime) -> str:
