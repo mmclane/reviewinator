@@ -44,7 +44,7 @@ def sample_config():
         github_token="ghp_test123",
         excluded_repos=[],
         excluded_review_teams=[],
-        created_pr_filter="either",
+        created_pr_filter="any",
         activity_lookback_days=14,
         refresh_interval=300,
     )

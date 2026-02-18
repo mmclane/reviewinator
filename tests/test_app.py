@@ -205,7 +205,7 @@ class TestReviewinatorApp:
             github_token="test",
             excluded_repos=[],
             excluded_review_teams=[],
-            created_pr_filter="either",
+            created_pr_filter="any",
             activity_lookback_days=14,
             refresh_interval=300,
         )
