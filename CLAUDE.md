@@ -45,7 +45,7 @@ excluded_repos:
 excluded_review_teams:
   - org/team-slug
   - snapptinc/all-engineers
-created_pr_filter: either  # Options: all, waiting, needs_attention, either
+created_pr_filter: any  # Options: all, waiting, needs_attention, any
 activity_lookback_days: 14  # Days to show repos with recent activity (default: 14)
 refresh_interval: 300  # optional, defaults to 300 seconds
 ```
@@ -55,7 +55,7 @@ The `excluded_repos` field is optional and lists repos to exclude from tracking.
 The `excluded_review_teams` field is optional and lists GitHub teams (in `org/team-slug` format) to exclude from review requests. PRs where you were requested as a reviewer via a team in this list will be filtered out.
 
 The `created_pr_filter` field controls which of your created PRs to show:
-- `either` (default): Show PRs waiting for review OR needing changes
+- `any` (default): Show PRs waiting for review, needing changes, OR approved
 - `waiting`: Show only PRs waiting for initial review
 - `needs_attention`: Show only PRs with changes requested
 - `all`: Show all your open PRs

@@ -16,12 +16,13 @@ created_pr_repos:
   - owner/repo1
   - org/repo3
 
-# Filter for which created PRs to show (optional, defaults to "waiting")
+# Filter for which created PRs to show (optional, defaults to "any")
 # Options:
+#   - "any": Show PRs waiting for review, with changes requested, OR approved (default)
 #   - "all": Show all open PRs you created
-#   - "waiting": Only show PRs still waiting for review
+#   - "waiting": Only show PRs still waiting for initial review
 #   - "needs_attention": Only show PRs with changes requested
-created_pr_filter: waiting
+created_pr_filter: any
 
 # How often to check for updates, in seconds (optional, defaults to 300)
 refresh_interval: 300
